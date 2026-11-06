@@ -1,4 +1,3 @@
-```html
 <!DOCTYPE html>
 <html lang="en" class="dark">
 <head>
@@ -37,20 +36,10 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
     <style>
         /* Custom Scrollbars */
-        ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-        ::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: rgba(156, 163, 175, 0.3);
-            border-radius: 9999px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: rgba(156, 163, 175, 0.5);
-        }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(156, 163, 175, 0.3); border-radius: 9999px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(156, 163, 175, 0.5); }
 
         /* Markdown Styling inside messages */
         .prose p { margin-bottom: 0.75rem; line-height: 1.6; }
@@ -68,7 +57,7 @@
         .prose th, .prose td { border: 1px solid #37393b; padding: 0.5rem 0.75rem; text-align: left; }
         .prose th { background: rgba(255, 255, 255, 0.05); }
 
-        /* Pulse Animation for Streaming Cursor */
+        /* Pulse Animation for Streaming Cursor & Voice Recording */
         .typing-cursor::after {
             content: '▋';
             display: inline-block;
@@ -77,16 +66,18 @@
             margin-left: 2px;
         }
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+        @keyframes pulse-red { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.15); opacity: 0.7; } }
+        .recording-pulse { animation: pulse-red 1.2s infinite ease-in-out; color: #ef4444 !important; }
     </style>
 </head>
 <body class="bg-gray-100 dark:bg-gemini-bg text-gray-800 dark:text-gray-100 font-sans h-screen flex overflow-hidden transition-colors duration-200">
 
     <!-- SIDEBAR -->
-    <aside id="sidebar" class="w-64 bg-gray-50 dark:bg-gemini-sidebar border-r border-gray-200 dark:border-gemini-border flex flex-col justify-between flex-shrink-0 transition-all duration-300 z-20 absolute md:relative inset-y-0 left-0 -translate-x-full md:translate-x-0">
+    <aside id="sidebar" class="w-72 bg-gray-50 dark:bg-gemini-sidebar border-r border-gray-200 dark:border-gemini-border flex flex-col justify-between flex-shrink-0 transition-all duration-300 z-20 absolute md:relative inset-y-0 left-0 -translate-x-full md:translate-x-0">
         <!-- Top Section -->
         <div class="p-4 flex flex-col h-full overflow-hidden">
             <!-- Sidebar Header & New Chat Button -->
-            <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center justify-between mb-3">
                 <button id="newChatBtn" class="flex-1 flex items-center gap-3 px-4 py-3 bg-gray-200 dark:bg-gemini-card hover:bg-gray-300 dark:hover:bg-gemini-cardHover rounded-full transition-colors text-sm font-medium shadow-sm">
                     <i class="fa-solid fa-plus text-blue-500"></i>
                     <span>New Chat</span>
@@ -96,8 +87,16 @@
                 </button>
             </div>
 
+            <!-- Chat History Search Bar -->
+            <div class="relative mb-3">
+                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+                    <i class="fa-solid fa-search text-xs"></i>
+                </span>
+                <input type="text" id="chatSearchInput" placeholder="Search chats..." class="w-full pl-9 pr-3 py-1.5 text-xs bg-gray-100 dark:bg-gemini-inputBg border border-gray-200 dark:border-gemini-border rounded-lg outline-none focus:border-blue-500 text-gray-900 dark:text-gray-100 placeholder-gray-400">
+            </div>
+
             <!-- Chat History Header -->
-            <div class="text-xs font-semibold text-gray-400 dark:text-gray-400 px-3 my-2 uppercase tracking-wider">Recent Chats</div>
+            <div class="text-xs font-semibold text-gray-400 dark:text-gray-400 px-3 my-1 uppercase tracking-wider">Recent Chats</div>
             
             <!-- Chat List -->
             <div id="chatHistoryList" class="flex-1 overflow-y-auto space-y-1 pr-1">
@@ -127,7 +126,7 @@
                 <button id="toggleSidebarBtn" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gemini-card text-gray-600 dark:text-gray-300">
                     <i class="fa-solid fa-bars text-lg"></i>
                 </button>
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2 flex-wrap">
                     <span id="currentModelBadge" class="text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
                         google/gemini-2.5-flash
                     </span>
@@ -301,7 +300,7 @@
         </div>
     </div>
 
-    <!-- SCRIPT CONTAINER AT END OF BODY -->
+    <!-- SCRIPT CONTAINER -->
     <script>
         // State Management
         let appState = {
@@ -315,7 +314,8 @@
             isWebSearchActive: false,
             isReasoningActive: false,
             attachedFile: null,
-            isGenerating: false
+            isGenerating: false,
+            searchQuery: ''
         };
 
         // DOM Elements
@@ -324,6 +324,7 @@
         const closeSidebarBtn = document.getElementById('closeSidebarBtn');
         const newChatBtn = document.getElementById('newChatBtn');
         const chatHistoryList = document.getElementById('chatHistoryList');
+        const chatSearchInput = document.getElementById('chatSearchInput');
         const clearAllChatsBtn = document.getElementById('clearAllChatsBtn');
         
         const heroView = document.getElementById('heroView');
@@ -377,6 +378,10 @@
             
             newChatBtn.addEventListener('click', createNewChat);
             clearAllChatsBtn.addEventListener('click', clearAllChats);
+            chatSearchInput.addEventListener('input', (e) => {
+                appState.searchQuery = e.target.value.toLowerCase();
+                renderChatHistory();
+            });
 
             userInput.addEventListener('input', autoResizeTextarea);
             userInput.addEventListener('keydown', (e) => {
@@ -425,15 +430,33 @@
             if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
                 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
                 const recognition = new SpeechRecognition();
-                recognition.onstart = () => voiceInputBtn.classList.add('text-red-500');
-                recognition.onend = () => voiceInputBtn.classList.remove('text-red-500');
+                recognition.continuous = false;
+                recognition.interimResults = false;
+
+                recognition.onstart = () => {
+                    voiceInputBtn.classList.add('recording-pulse');
+                };
+                recognition.onend = () => {
+                    voiceInputBtn.classList.remove('recording-pulse');
+                };
+                recognition.onerror = () => {
+                    voiceInputBtn.classList.remove('recording-pulse');
+                };
                 recognition.onresult = (e) => {
-                    userInput.value += (userInput.value ? ' ' : '') + e.results[0][0].transcript;
+                    const transcript = e.results[0][0].transcript;
+                    userInput.value += (userInput.value ? ' ' : '') + transcript;
                     autoResizeTextarea();
                 };
-                voiceInputBtn.addEventListener('click', () => recognition.start());
+                voiceInputBtn.addEventListener('click', () => {
+                    try {
+                        recognition.start();
+                    } catch(err) {
+                        recognition.stop();
+                    }
+                });
             } else {
-                voiceInputBtn.style.display = 'none';
+                voiceInputBtn.title = "Speech recognition not supported in this browser";
+                voiceInputBtn.style.opacity = "0.5";
             }
 
             themeToggleBtn.addEventListener('click', () => {
@@ -492,7 +515,11 @@
 
         function renderChatHistory() {
             chatHistoryList.innerHTML = '';
-            appState.chats.forEach(chat => {
+            const filteredChats = appState.chats.filter(chat => 
+                chat.title.toLowerCase().includes(appState.searchQuery)
+            );
+
+            filteredChats.forEach(chat => {
                 const btn = document.createElement('button');
                 btn.className = `w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm text-left truncate transition ${
                     chat.id === appState.currentChatId 
@@ -705,7 +732,7 @@ To enable actual AI model responses (Gemini, Claude, GPT-4, DeepSeek), open **Se
                 contentDiv.innerHTML = marked.parse(currentString);
                 addCodeCopyButtons(contentDiv);
                 scrollChatToBottom();
-                await new Promise(resolve => setTimeout(resolve, 35));
+                await new Promise(resolve => setTimeout(resolve, 30));
             }
 
             contentDiv.classList.remove('typing-cursor');
@@ -792,7 +819,6 @@ To enable actual AI model responses (Gemini, Claude, GPT-4, DeepSeek), open **Se
             const currentChat = appState.chats.find(c => c.id === appState.currentChatId);
             if (!currentChat || appState.isGenerating) return;
 
-            // Remove previous assistant message and everything after
             currentChat.messages = currentChat.messages.slice(0, index);
             loadChat(appState.currentChatId);
             await generateAssistantResponse(currentChat);
@@ -831,4 +857,3 @@ To enable actual AI model responses (Gemini, Claude, GPT-4, DeepSeek), open **Se
     </script>
 </body>
 </html>
-```
