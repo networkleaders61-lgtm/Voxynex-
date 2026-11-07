@@ -1,8 +1,9 @@
+
 <!DOCTYPE html>
 <html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Voxynex AI - Universal Chat Interface</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -35,29 +36,19 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
     <style>
-        /* Custom Scrollbars */
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        /* Prevent mobile bounce and lock to exact dynamic viewport height */
+        html, body {
+            height: 100dvh;
+            width: 100vw;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: rgba(156, 163, 175, 0.3); border-radius: 9999px; }
-        ::-webkit-scrollbar-thumb:hover { background: rgba(156, 163, 175, 0.5); }
 
-        /* Markdown Styling inside messages */
         .prose p { margin-bottom: 0.75rem; line-height: 1.6; }
-        .prose p:last-child { margin-bottom: 0; }
-        .prose ul { list-style-type: disc; padding-left: 1.25rem; margin-bottom: 0.75rem; }
-        .prose ol { list-style-type: decimal; padding-left: 1.25rem; margin-bottom: 0.75rem; }
-        .prose code:not(pre code) { background: rgba(110, 118, 129, 0.2); padding: 0.2rem 0.4rem; border-radius: 4px; font-size: 0.875em; }
-        .prose pre { padding: 0; background: #0d1117; margin-bottom: 1rem; border-radius: 0.5rem; overflow: hidden; border: 1px solid #30363d; }
-        .prose blockquote { border-left: 3px solid #3b82f6; padding-left: 1rem; font-style: italic; color: #9ca3af; margin-bottom: 0.75rem; }
-        .prose h1, .prose h2, .prose h3 { font-weight: 700; margin-top: 1rem; margin-bottom: 0.5rem; }
-        .prose h1 { font-size: 1.5rem; }
-        .prose h2 { font-size: 1.25rem; }
-        .prose h3 { font-size: 1.1rem; }
-        .prose table { border-collapse: collapse; width: 100%; margin-bottom: 1rem; }
-        .prose th, .prose td { border: 1px solid #37393b; padding: 0.5rem 0.75rem; text-align: left; }
-        .prose th { background: rgba(255, 255, 255, 0.05); }
-
-        /* Pulse Animation for Streaming Cursor & Voice Recording */
         .typing-cursor::after {
             content: '▋';
             display: inline-block;
@@ -70,10 +61,10 @@
         .recording-pulse { animation: pulse-red 1.2s infinite ease-in-out; color: #ef4444 !important; }
     </style>
 </head>
-<body class="bg-gray-100 dark:bg-voxynex-bg text-gray-800 dark:text-gray-100 font-sans h-screen flex overflow-hidden transition-colors duration-200">
+<body class="bg-gray-100 dark:bg-voxynex-bg text-gray-800 dark:text-gray-100 font-sans h-[100dvh] w-screen flex overflow-hidden">
 
-    <!-- SIDEBAR -->
-    <aside id="sidebar" class="w-72 bg-gray-50 dark:bg-voxynex-sidebar border-r border-gray-200 dark:border-voxynex-border flex flex-col justify-between flex-shrink-0 transition-all duration-300 z-20 absolute md:relative inset-y-0 left-0 -translate-x-full md:translate-x-0">
+    <!-- SIDEBAR (Absolute Overlay on Mobile so it doesn't shrink the chat layout) -->
+    <aside id="sidebar" class="w-72 bg-gray-50 dark:bg-voxynex-sidebar border-r border-gray-200 dark:border-voxynex-border flex flex-col justify-between flex-shrink-0 transition-transform duration-300 z-40 fixed md:relative inset-y-0 left-0 -translate-x-full md:translate-x-0 h-full shadow-2xl md:shadow-none">
         <!-- Top Section -->
         <div class="p-4 flex flex-col h-full overflow-hidden">
             <!-- Sidebar Header & New Chat Button -->
@@ -121,6 +112,9 @@
             </button>
         </div>
     </aside>
+
+    <!-- MAIN CHAT CONTAINER -->
+    <main class="flex-1 flex flex-col h-full w-full relative overflow-hidden bg-white dark:bg-voxynex-bg">
 
     <!-- MAIN CHAT CONTAINER -->
     <main class="flex-1 flex flex-col h-full relative overflow-hidden bg-white dark:bg-voxynex-bg">
